@@ -10,6 +10,11 @@ function colorFromName(name = '') {
   return `hsl(${Math.abs(hash) % 360}, 70%, 55%)`
 }
 
+// Tamaño de la cara de la tarjeta (proporción 4:5, como una foto de producto)
+const FACE_W = 2.08
+const FACE_H = 2.6
+const CARD_D = 0.14
+
 // Carga la imagen del producto como textura; si falla (CORS, URL rota) devuelve null
 function useImageTexture(url) {
   const [texture, setTexture] = useState(null)
@@ -25,9 +30,9 @@ function useImageTexture(url) {
       (tex) => {
         if (cancelled) return tex.dispose()
         tex.colorSpace = THREE.SRGBColorSpace
-        // Recorte tipo "cover" para la cara de 1.8 x 2.2
+        // Recorte tipo "cover" para la cara de la tarjeta
         const imgAspect = tex.image.width / tex.image.height
-        const faceAspect = 1.8 / 2.2
+        const faceAspect = FACE_W / FACE_H
         if (imgAspect > faceAspect) {
           tex.repeat.set(faceAspect / imgAspect, 1)
           tex.offset.set((1 - tex.repeat.x) / 2, 0)
@@ -59,28 +64,34 @@ function ProductBox({ color, texture, productKey }) {
     scale.current = 0.6
   }, [productKey])
   useFrame((_, delta) => {
-    spin.current.rotation.y += delta * 0.4
+    spin.current.rotation.y += delta * 0.35
     scale.current += (1 - scale.current) * Math.min(1, delta * 6)
     pop.current.scale.setScalar(scale.current)
   })
   return (
     <Float speed={2} rotationIntensity={0.25} floatIntensity={0.5} floatingRange={[0, 0.25]}>
-      <group ref={pop} position={[0, 0.35, 0]}>
+      <group ref={pop} position={[0, 0.25, 0]}>
         <group ref={spin}>
-          <RoundedBox args={[2, 2.4, 1.2]} radius={0.12} smoothness={4}>
-            <meshStandardMaterial color={color} roughness={0.3} metalness={0.2} envMapIntensity={1.2} />
+          {/* Marco oscuro y delgado, con el borde del color del producto */}
+          <RoundedBox args={[FACE_W + 0.16, FACE_H + 0.16, CARD_D]} radius={0.06} smoothness={4}>
+            <meshStandardMaterial color="#0f172a" roughness={0.25} metalness={0.7} emissive={color} emissiveIntensity={0.12} />
           </RoundedBox>
-          {texture && (
+          {texture ? (
             <>
-              <mesh position={[0, 0, 0.605]}>
-                <planeGeometry args={[1.8, 2.2]} />
-                <meshStandardMaterial map={texture} roughness={0.45} />
+              <mesh position={[0, 0, CARD_D / 2 + 0.005]}>
+                <planeGeometry args={[FACE_W, FACE_H]} />
+                <meshStandardMaterial map={texture} roughness={0.5} />
               </mesh>
-              <mesh position={[0, 0, -0.605]} rotation={[0, Math.PI, 0]}>
-                <planeGeometry args={[1.8, 2.2]} />
-                <meshStandardMaterial map={texture} roughness={0.45} />
+              <mesh position={[0, 0, -CARD_D / 2 - 0.005]} rotation={[0, Math.PI, 0]}>
+                <planeGeometry args={[FACE_W, FACE_H]} />
+                <meshStandardMaterial map={texture} roughness={0.5} />
               </mesh>
             </>
+          ) : (
+            <mesh position={[0, 0, CARD_D / 2 + 0.005]}>
+              <planeGeometry args={[FACE_W, FACE_H]} />
+              <meshStandardMaterial color={color} roughness={0.5} />
+            </mesh>
           )}
         </group>
       </group>
@@ -91,13 +102,13 @@ function ProductBox({ color, texture, productKey }) {
 // Pedestal de exhibición con un anillo de luz del color del producto
 function Pedestal({ color }) {
   return (
-    <group position={[0, -1.35, 0]}>
-      <mesh position={[0, -0.2, 0]}>
-        <cylinderGeometry args={[1.7, 1.85, 0.4, 64]} />
-        <meshStandardMaterial color="#1e293b" roughness={0.4} metalness={0.6} />
+    <group position={[0, -1.6, 0]}>
+      <mesh position={[0, -0.12, 0]}>
+        <cylinderGeometry args={[1.25, 1.35, 0.24, 64]} />
+        <meshStandardMaterial color="#1e293b" roughness={0.35} metalness={0.7} />
       </mesh>
       <mesh position={[0, 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[1.45, 1.6, 64]} />
+        <ringGeometry args={[1.05, 1.13, 64]} />
         <meshBasicMaterial color={color} toneMapped={false} />
       </mesh>
     </group>
@@ -110,7 +121,7 @@ export function Product3DViewer({ product, loading = false }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-b from-slate-900 to-slate-950">
       <div className="h-80 w-full cursor-grab active:cursor-grabbing">
-        <Canvas camera={{ position: [0, 1.2, 6], fov: 45 }} dpr={[1, 2]}>
+        <Canvas camera={{ position: [0, 0.3, 5.7], fov: 42 }} dpr={[1, 2]}>
           <ambientLight intensity={0.35} />
           <spotLight position={[4, 6, 4]} angle={0.4} penumbra={0.8} intensity={60} />
           <pointLight position={[-3, -1, -2]} intensity={8} color="#818cf8" />
@@ -123,7 +134,7 @@ export function Product3DViewer({ product, loading = false }) {
           <ProductBox color={color} texture={texture} productKey={product?.id} />
           <Pedestal color={color} />
           <Sparkles count={30} scale={[5, 3.5, 3]} size={2} speed={0.3} opacity={0.5} color={color} />
-          <ContactShadows position={[0, -1.34, 0]} opacity={0.6} scale={5} blur={2} far={3} />
+          <ContactShadows position={[0, -1.59, 0]} opacity={0.6} scale={4} blur={2} far={3} />
           <OrbitControls enableZoom={false} enablePan={false} minPolarAngle={Math.PI / 4} maxPolarAngle={Math.PI / 1.9} />
         </Canvas>
       </div>
