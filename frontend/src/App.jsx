@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createProduct, getProducts } from './api'
 import { ProductForm } from './components/ProductForm'
 import { ProductGrid } from './components/ProductGrid'
-import { Product3DViewer } from './components/Product3DViewer'
+import { SafeViewer } from './components/SafeViewer'
 import { StatsPanel } from './components/StatsPanel'
 import { ServerWakeNotice } from './components/ServerWakeNotice'
 import { CatalogToolbar, filterAndSort } from './components/CatalogToolbar'
@@ -69,7 +69,7 @@ export default function App() {
       <div className="grid gap-6 lg:grid-cols-[1fr_1.3fr]">
         <ProductForm onCreate={handleCreate} />
         <div ref={viewerRef}>
-          <Product3DViewer product={featured} loading={loading} />
+          <SafeViewer product={featured} loading={loading} />
         </div>
       </div>
 
