@@ -1,6 +1,11 @@
 const API_URL = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '')
 const PRODUCTS = `${API_URL}/api/v1/products`
 
+// Un fallo de red (servidor dormido, URL mal configurada) da un mensaje en inglés del navegador
+function networkError() {
+  throw new Error('No se pudo conectar con el servidor')
+}
+
 async function handle(res) {
   if (!res.ok) {
     let detail = `Error ${res.status}`
@@ -14,13 +19,15 @@ async function handle(res) {
   return res.json()
 }
 
-export const getProducts = () => fetch(PRODUCTS).then(handle)
+export const getProducts = () => fetch(PRODUCTS).catch(networkError).then(handle)
 
 export const createProduct = (product) =>
   fetch(PRODUCTS, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(product),
-  }).then(handle)
+  })
+    .catch(networkError)
+    .then(handle)
 
 export { API_URL }

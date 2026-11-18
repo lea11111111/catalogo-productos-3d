@@ -1,4 +1,4 @@
-export function ProductGrid({ products, loading, error, onRetry }) {
+export function ProductGrid({ products, loading, error, onRetry, query = '' }) {
   if (loading) {
     return (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -17,6 +17,14 @@ export function ProductGrid({ products, loading, error, onRetry }) {
         <button onClick={onRetry} className="mt-4 rounded-lg border border-slate-700 px-4 py-2 text-sm hover:bg-slate-800">
           Reintentar
         </button>
+      </div>
+    )
+  }
+
+  if (products.length === 0 && query) {
+    return (
+      <div className="rounded-2xl border border-dashed border-slate-800 p-10 text-center text-sm text-slate-500">
+        Sin resultados para «{query}»
       </div>
     )
   }

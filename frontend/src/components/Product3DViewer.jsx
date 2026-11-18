@@ -17,6 +17,7 @@ function useImageTexture(url) {
     setTexture(null)
     if (!url) return
     let cancelled = false
+    let loaded = null
     const loader = new THREE.TextureLoader()
     loader.setCrossOrigin('anonymous')
     loader.load(
@@ -34,6 +35,7 @@ function useImageTexture(url) {
           tex.repeat.set(1, imgAspect / faceAspect)
           tex.offset.set(0, (1 - tex.repeat.y) / 2)
         }
+        loaded = tex
         setTexture(tex)
       },
       undefined,
@@ -41,6 +43,8 @@ function useImageTexture(url) {
     )
     return () => {
       cancelled = true
+      // Libera de la GPU la textura anterior al cambiar de imagen o desmontar
+      loaded?.dispose()
     }
   }, [url])
   return texture
@@ -74,7 +78,7 @@ function ProductBox({ color, texture }) {
   )
 }
 
-export function Product3DViewer({ product }) {
+export function Product3DViewer({ product, loading = false }) {
   const color = colorFromName(product?.name)
   const texture = useImageTexture(product?.image_url)
   return (
@@ -97,7 +101,7 @@ export function Product3DViewer({ product }) {
             <span className="text-lg font-semibold tabular-nums">${Number(product.price).toFixed(2)}</span>
           </div>
         ) : (
-          <h2 className="mt-1 text-lg font-semibold text-slate-500">Aún no hay productos</h2>
+          <h2 className="mt-1 text-lg font-semibold text-slate-500">{loading ? 'Cargando…' : 'Aún no hay productos'}</h2>
         )}
         <p className="mt-2 text-xs text-slate-500">Modelo 3D interactivo · arrastra para rotar</p>
       </div>
