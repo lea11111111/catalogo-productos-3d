@@ -1,4 +1,23 @@
-export function ProductGrid({ products, loading, error, onRetry, query = '', selectedId, onSelect }) {
+import { useState } from 'react'
+
+// Imagen con respaldo: si la URL no es una imagen válida, muestra la inicial del nombre
+function Thumb({ product }) {
+  const [broken, setBroken] = useState(false)
+  if (!product.image_url || broken) {
+    return <span className="text-4xl font-bold text-slate-700">{product.name.charAt(0).toUpperCase()}</span>
+  }
+  return (
+    <img
+      src={product.image_url}
+      alt={product.name}
+      loading="lazy"
+      onError={() => setBroken(true)}
+      className="h-full w-full object-cover"
+    />
+  )
+}
+
+export function ProductGrid({ products, loading, error, onRetry, query = '', selectedId, onSelect, onEdit, onDelete }) {
   if (loading) {
     return (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -40,7 +59,7 @@ export function ProductGrid({ products, loading, error, onRetry, query = '', sel
   return (
     <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {products.map((p) => (
-        <li key={p.id}>
+        <li key={p.id} className="group/card relative">
           <button
             type="button"
             onClick={() => onSelect?.(p.id)}
@@ -50,11 +69,7 @@ export function ProductGrid({ products, loading, error, onRetry, query = '', sel
             }`}
           >
           <div className="relative flex h-32 items-center justify-center bg-slate-800/50">
-            {p.image_url ? (
-              <img src={p.image_url} alt={p.name} loading="lazy" className="h-full w-full object-cover" />
-            ) : (
-              <span className="text-4xl font-bold text-slate-700">{p.name.charAt(0).toUpperCase()}</span>
-            )}
+            <Thumb key={p.image_url} product={p} />
             <span className="absolute right-2 top-2 rounded-full bg-slate-950/80 px-2 py-0.5 text-[11px] font-medium text-indigo-300 opacity-0 transition group-hover:opacity-100 group-aria-pressed:opacity-100">
               {p.id === selectedId ? 'En vitrina 3D' : 'Ver en 3D'}
             </span>
@@ -73,6 +88,22 @@ export function ProductGrid({ products, loading, error, onRetry, query = '', sel
             </div>
           </div>
           </button>
+          <div className="absolute bottom-[3.25rem] right-2 flex gap-1.5 opacity-100 transition sm:opacity-0 sm:group-hover/card:opacity-100 sm:focus-within:opacity-100">
+            <button
+              type="button"
+              onClick={() => onEdit?.(p)}
+              className="rounded-md bg-slate-950/85 px-2 py-1 text-xs font-medium text-slate-200 hover:bg-indigo-600"
+            >
+              Editar
+            </button>
+            <button
+              type="button"
+              onClick={() => onDelete?.(p)}
+              className="rounded-md bg-slate-950/85 px-2 py-1 text-xs font-medium text-red-300 hover:bg-red-600 hover:text-white"
+            >
+              Eliminar
+            </button>
+          </div>
         </li>
       ))}
     </ul>

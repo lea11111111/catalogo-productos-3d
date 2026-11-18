@@ -31,3 +31,17 @@ export const createProduct = (product) =>
     .then(handle)
 
 export { API_URL }
+
+export const updateProduct = (id, product) =>
+  fetch(`${PRODUCTS}/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(product),
+  })
+    .catch(networkError)
+    .then(handle)
+
+export const deleteProduct = (id) =>
+  fetch(`${PRODUCTS}/${id}`, { method: 'DELETE' })
+    .catch(networkError)
+    .then((res) => (res.status === 204 ? null : handle(res)))

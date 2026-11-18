@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { createProduct, getProducts } from './api'
+import { createProduct, deleteProduct, getProducts, updateProduct } from './api'
 import { ProductForm } from './components/ProductForm'
 import { ProductGrid } from './components/ProductGrid'
 import { SafeViewer } from './components/SafeViewer'
@@ -15,6 +15,8 @@ export default function App() {
   const [sort, setSort] = useState('recientes')
   const [selectedId, setSelectedId] = useState(null)
   const viewerRef = useRef(null)
+  const formRef = useRef(null)
+  const [editing, setEditing] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -37,6 +39,30 @@ export default function App() {
     setProducts((prev) => [created, ...prev])
     setSelectedId(created.id)
     setError('')
+  }
+
+  async function handleUpdate(id, data) {
+    const updated = await updateProduct(id, data)
+    setProducts((prev) => prev.map((p) => (p.id === id ? updated : p)))
+    setSelectedId(id)
+    setEditing(null)
+  }
+
+  function handleEdit(product) {
+    setEditing(product)
+    setSelectedId(product.id)
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+
+  async function handleDelete(product) {
+    if (!window.confirm(`¿Eliminar «${product.name}»?`)) return
+    try {
+      await deleteProduct(product.id)
+      setProducts((prev) => prev.filter((p) => p.id !== product.id))
+      if (editing?.id === product.id) setEditing(null)
+    } catch (err) {
+      window.alert(`No se pudo eliminar: ${err.message}`)
+    }
   }
 
   // El seleccionado en el catálogo; si no hay, el más reciente (la API los devuelve primero)
@@ -67,7 +93,14 @@ export default function App() {
       )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1.3fr]">
-        <ProductForm onCreate={handleCreate} />
+        <div ref={formRef}>
+          <ProductForm
+            onCreate={handleCreate}
+            onUpdate={handleUpdate}
+            editing={editing}
+            onCancelEdit={() => setEditing(null)}
+          />
+        </div>
         <div ref={viewerRef}>
           <SafeViewer product={featured} loading={loading} />
         </div>
@@ -91,6 +124,8 @@ export default function App() {
           query={products.length > 0 ? query.trim() : ''}
           selectedId={featured?.id}
           onSelect={handleSelect}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
         />
       </section>
     </div>

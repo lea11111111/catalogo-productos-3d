@@ -1,7 +1,7 @@
 import os
 from typing import List
 
-from fastapi import Depends, FastAPI, status
+from fastapi import Depends, FastAPI, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
@@ -55,3 +55,30 @@ def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db)
     db.refresh(nuevo_producto)
     notify_product_created(nuevo_producto.name, float(nuevo_producto.price), nuevo_producto.stock)
     return nuevo_producto
+
+
+def _get_or_404(db: Session, product_id: int) -> models.Product:
+    producto = db.get(models.Product, product_id)
+    if producto is None:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    return producto
+
+
+# 3. Editar un producto existente
+@app.put("/api/v1/products/{product_id}", response_model=schemas.ProductResponse, tags=["Productos"])
+def update_product(product_id: int, product: schemas.ProductCreate, db: Session = Depends(get_db)):
+    producto = _get_or_404(db, product_id)
+    for campo, valor in product.model_dump().items():
+        setattr(producto, campo, valor)
+    db.commit()
+    db.refresh(producto)
+    return producto
+
+
+# 4. Eliminar un producto
+@app.delete("/api/v1/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Productos"])
+def delete_product(product_id: int, db: Session = Depends(get_db)):
+    producto = _get_or_404(db, product_id)
+    db.delete(producto)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

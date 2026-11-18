@@ -17,6 +17,7 @@ Frontend en React (Vercel), API en FastAPI (Render) y base de datos PostgreSQL (
 |---|---|
 | 🧊 **Vitrina 3D** | La foto del producto se muestra en una tarjeta 3D que gira sobre un pedestal con luz. Se rota con el cursor o el dedo. |
 | 👆 **Clic para ver en 3D** | Al tocar cualquier producto del catálogo, aparece en la vitrina. |
+| ✏️ **Editar y eliminar** | Botones en cada producto; el formulario avisa si la URL de imagen no es válida. |
 | ➕ **Registro de productos** | Formulario con validación (nombre, precio ≥ 0, stock ≥ 0, URL de imagen). Se agrega sin recargar. |
 | 📊 **Estadísticas** | Total de productos, valor del inventario, unidades en stock y agotados. |
 | 🔎 **Búsqueda y orden** | Busca sin importar mayúsculas ni acentos; ordena por fecha, precio o nombre. |
@@ -52,6 +53,8 @@ flowchart LR
 |---|---|---|
 | `GET` | `/api/v1/products` | `200` — lista de productos (más recientes primero) |
 | `POST` | `/api/v1/products` | `201` — producto creado · `422` si los datos no son válidos |
+| `PUT` | `/api/v1/products/{id}` | `200` — producto editado · `404` si no existe |
+| `DELETE` | `/api/v1/products/{id}` | `204` — producto eliminado |
 | `GET` | `/docs` | Documentación interactiva (Swagger) |
 
 Ejemplo:
