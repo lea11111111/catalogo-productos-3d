@@ -48,7 +48,7 @@ React + Vite + Tailwind  ──▶ SQLAlchemy + Pydantic    ──▶ Supabase (
 - **RF1** Listado al cargar, con esqueletos de carga.
 - **RF2** Formulario con validación (nombre obligatorio, precio ≥ 0, stock entero ≥ 0).
 - **RF3** El producto creado aparece al instante sin recargar.
-- **RF4** **Vitrina 3D**: la foto del producto se aplica como textura sobre una caja que gira sobre un pedestal con anillo de luz, iluminación de estudio y partículas. Se rota con el cursor o el dedo.
+- **RF4** **Vitrina 3D**: la foto del producto se muestra en una tarjeta 3D con marco que gira sobre un pedestal con anillo de luz, iluminación de estudio y partículas. Se rota con el cursor o el dedo.
 - **RF5** Mensajes de error en español y botón "Reintentar" si la API no responde.
 - **RF6** Diseño responsivo (probado a 375 px y 1366 px, sin scroll horizontal).
 
@@ -64,6 +64,8 @@ React + Vite + Tailwind  ──▶ SQLAlchemy + Pydantic    ──▶ Supabase (
 | Escritorio | Selección en la vitrina 3D | Móvil |
 |---|---|---|
 | ![](docs/capturas/desktop.png) | ![](docs/capturas/desktop-select.png) | ![](docs/capturas/mobile.png) |
+
+Vitrina 3D: ![](docs/capturas/vitrina-3d.png)
 
 API en Render (Swagger): ![](docs/capturas/api-docs.png)
 
