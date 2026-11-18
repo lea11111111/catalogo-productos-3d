@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { makeCutout } from '../lib/cutout'
-import { OrbitControls, RoundedBox, Float, ContactShadows, Environment, Lightformer, Sparkles } from '@react-three/drei'
+import { buildInflatedGeometry } from '../lib/inflate'
+import { OrbitControls, RoundedBox, Float, Environment, Lightformer, Sparkles, MeshReflectorMaterial } from '@react-three/drei'
 
 // Color estable a partir del nombre del producto
 function colorFromName(name = '') {
@@ -15,7 +16,10 @@ function colorFromName(name = '') {
 const MAX_W = 2.8
 const MAX_H = 2.6
 const CARD_D = 0.14
-const CARD_BOTTOM = -1.15 // borde inferior de la tarjeta, justo encima del pedestal
+const CARD_BOTTOM = -1.0 // borde inferior del producto: flota un poco por encima del pedestal
+// Tamaño máximo de la figura recortada (algo menor que la tarjeta para que respire)
+const CUT_MAX_W = 2.5
+const CUT_MAX_H = 2.2
 
 function faceSize(aspect = 0.8) {
   return aspect > MAX_W / MAX_H ? [MAX_W, MAX_W / aspect] : [MAX_H * aspect, MAX_H]
@@ -105,44 +109,9 @@ function CardModel({ color, texture }) {
   )
 }
 
-const CUT_DEPTH = 0.32
-
-// Figura recortada: la silueta del producto extruida con grosor y bordes redondeados
+// Figura inflada: la silueta del producto con volumen redondeado
 function useCutoutGeometry(cutout) {
-  return useMemo(() => {
-    if (!cutout) return null
-    const { contours, bbox, imageAspect } = cutout
-    const bw = (bbox.maxX - bbox.minX) * imageAspect
-    const bh = bbox.maxY - bbox.minY
-    const s = Math.min(MAX_W / bw, MAX_H / bh)
-    const cx = (bbox.minX + bbox.maxX) / 2
-    const cy = (bbox.minY + bbox.maxY) / 2
-    const toWorld = ([u, v]) => new THREE.Vector2((u - cx) * imageAspect * s, -(v - cy) * s)
-    const shapes = contours.map((pts) => new THREE.Shape(pts.map(toWorld)))
-    const geo = new THREE.ExtrudeGeometry(shapes, {
-      depth: CUT_DEPTH,
-      bevelEnabled: true,
-      bevelThickness: 0.05,
-      bevelSize: 0.025,
-      bevelSegments: 4,
-      curveSegments: 1,
-    })
-    geo.translate(0, 0, -CUT_DEPTH / 2)
-    // Coordenadas de textura de las caras frontal/trasera = posición en la foto original
-    const pos = geo.attributes.position
-    const uv = geo.attributes.uv
-    for (const group of geo.groups) {
-      if (group.materialIndex !== 0) continue
-      for (let i = group.start; i < group.start + group.count; i++) {
-        const u = pos.getX(i) / (imageAspect * s) + cx
-        const v = cy - pos.getY(i) / s
-        uv.setXY(i, u, 1 - v)
-      }
-    }
-    uv.needsUpdate = true
-    geo.computeVertexNormals()
-    return { geo, height: bh * s }
-  }, [cutout])
+  return useMemo(() => (cutout ? buildInflatedGeometry(cutout, CUT_MAX_W, CUT_MAX_H) : null), [cutout])
 }
 
 function CutoutModel({ cutout }) {
@@ -159,8 +128,16 @@ function CutoutModel({ cutout }) {
   }, [texture, shape])
   return (
     <mesh geometry={shape.geo}>
-      <meshStandardMaterial attach="material-0" map={texture} alphaTest={0.5} roughness={0.4} metalness={0.05} />
-      <meshStandardMaterial attach="material-1" color={cutout.edgeColor} roughness={0.3} metalness={0.4} side={THREE.DoubleSide} />
+      {/* emissiveMap: la foto conserva sus colores reales aunque la luz sea tenue */}
+      <meshStandardMaterial
+        map={texture}
+        emissiveMap={texture}
+        emissive="#ffffff"
+        emissiveIntensity={0.55}
+        roughness={0.38}
+        side={THREE.DoubleSide}
+        metalness={0.05}
+      />
     </mesh>
   )
 }
@@ -217,6 +194,23 @@ function Pedestal({ color }) {
         <ringGeometry args={[1.05, 1.13, 64]} />
         <meshBasicMaterial color={color} toneMapped={false} />
       </mesh>
+      {/* Superficie tipo espejo que refleja el producto */}
+      <mesh position={[0, 0.003, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[1.05, 64]} />
+        <MeshReflectorMaterial
+          resolution={512}
+          blur={[300, 80]}
+          mixBlur={1}
+          mixStrength={3}
+          mirror={0.7}
+          roughness={0.6}
+          depthScale={0.6}
+          minDepthThreshold={0.4}
+          maxDepthThreshold={1.4}
+          color="#0b1120"
+          metalness={0.6}
+        />
+      </mesh>
     </group>
   )
 }
@@ -227,8 +221,11 @@ export function Product3DViewer({ product, loading = false }) {
     <div className="overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-b from-slate-900 to-slate-950">
       <div className="h-80 w-full cursor-grab active:cursor-grabbing">
         <Canvas camera={{ position: [0, 0.2, 6.3], fov: 42 }} dpr={[1, 2]}>
-          <ambientLight intensity={0.35} />
+          <ambientLight intensity={0.5} />
+          <directionalLight position={[0, 2, 6]} intensity={1.1} />
           <spotLight position={[4, 6, 4]} angle={0.4} penumbra={0.8} intensity={60} />
+          {/* Luz de contorno por detrás: hace resaltar la silueta */}
+          <pointLight position={[0, 1.5, -3]} intensity={18} color="#c7d2fe" />
           <pointLight position={[-3, -1, -2]} intensity={8} color="#818cf8" />
           {/* Iluminación de estudio generada localmente (sin descargar HDR) */}
           <Environment resolution={256}>
@@ -239,7 +236,6 @@ export function Product3DViewer({ product, loading = false }) {
           <ProductModel product={product} color={color} />
           <Pedestal color={color} />
           <Sparkles count={30} scale={[5, 3.5, 3]} size={2} speed={0.3} opacity={0.5} color={color} />
-          <ContactShadows position={[0, -1.59, 0]} opacity={0.6} scale={4} blur={2} far={3} />
           <OrbitControls enableZoom={false} enablePan={false} minPolarAngle={Math.PI / 4} maxPolarAngle={Math.PI / 1.9} />
         </Canvas>
       </div>

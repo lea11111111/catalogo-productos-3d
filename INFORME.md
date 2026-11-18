@@ -50,7 +50,7 @@ React + Vite + Tailwind  ──▶ SQLAlchemy + Pydantic    ──▶ Supabase (
 - **RF1** Listado al cargar, con esqueletos de carga.
 - **RF2** Formulario con validación (nombre obligatorio, precio ≥ 0, stock entero ≥ 0).
 - **RF3** El producto creado aparece al instante sin recargar.
-- **RF4** **Vitrina 3D**: la app quita el fondo de la foto del producto (relleno por inundación desde los bordes), traza su contorno (seguimiento de Moore + simplificación de Ramer–Douglas–Peucker) y lo extruye en 3D con `ExtrudeGeometry`; si el fondo no es liso, usa una tarjeta con la foto. La figura gira sobre un pedestal con anillo de luz, iluminación de estudio y partículas. Se rota con el cursor o el dedo.
+- **RF4** **Vitrina 3D**: la app quita el fondo de la foto del producto (relleno por inundación desde los bordes), calcula un campo de distancias (chamfer 3-4) y "infla" la silueta con un perfil de sección circular, generando una malla 3D cerrada con volumen; si el fondo no es liso, usa una tarjeta con la foto. La figura gira sobre un pedestal con anillo de luz, iluminación de estudio y partículas. Se rota con el cursor o el dedo.
 - **RF5** Mensajes de error en español y botón "Reintentar" si la API no responde.
 - **RF6** Diseño responsivo (probado a 375 px y 1366 px, sin scroll horizontal).
 

@@ -234,6 +234,9 @@ export async function makeCutout(url) {
 
   return {
     canvas: tex,
+    mask: keep,
+    mw: w,
+    mh: h,
     contours,
     bbox: { minX, minY, maxX, maxY },
     imageAspect: aspect,
