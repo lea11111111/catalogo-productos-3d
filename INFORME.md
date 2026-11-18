@@ -41,8 +41,8 @@ React + Vite + Tailwind  ──▶ SQLAlchemy + Pydantic    ──▶ Supabase (
 |---|---|---|
 | GET | `/api/v1/products` | 200 — lista (más recientes primero) |
 | POST | `/api/v1/products` | 201 — producto creado · 422 si los datos no son válidos |
-| PUT | /api/v1/products/{id} | 200 — producto editado · 404 si no existe |
-| DELETE | /api/v1/products/{id} | 204 — producto eliminado |
+| PUT | `/api/v1/products/{id}` | 200 — producto editado · 404 si no existe |
+| DELETE | `/api/v1/products/{id}` | 204 — producto eliminado |
 | GET | `/docs` | Swagger UI |
 
 ## 3. Funcionalidades
