@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createProduct, getProducts } from './api'
 import { ProductForm } from './components/ProductForm'
 import { ProductGrid } from './components/ProductGrid'
@@ -13,6 +13,8 @@ export default function App() {
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState('recientes')
+  const [selectedId, setSelectedId] = useState(null)
+  const viewerRef = useRef(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -33,11 +35,18 @@ export default function App() {
   async function handleCreate(product) {
     const created = await createProduct(product)
     setProducts((prev) => [created, ...prev])
+    setSelectedId(created.id)
     setError('')
   }
 
-  // La API devuelve los más recientes primero: el destacado es el último registrado
-  const featured = products[0]
+  // El seleccionado en el catálogo; si no hay, el más reciente (la API los devuelve primero)
+  const featured = products.find((p) => p.id === selectedId) ?? products[0]
+
+  function handleSelect(id) {
+    setSelectedId(id)
+    // En móvil el visor queda arriba: lo traemos a la vista
+    viewerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
 
   const visibleProducts = useMemo(() => filterAndSort(products, query, sort), [products, query, sort])
   const isFiltering = query.trim() !== ''
@@ -59,7 +68,9 @@ export default function App() {
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1.3fr]">
         <ProductForm onCreate={handleCreate} />
-        <Product3DViewer product={featured} loading={loading} />
+        <div ref={viewerRef}>
+          <Product3DViewer product={featured} loading={loading} />
+        </div>
       </div>
 
       <section className="mt-10">
@@ -78,6 +89,8 @@ export default function App() {
           error={error}
           onRetry={load}
           query={products.length > 0 ? query.trim() : ''}
+          selectedId={featured?.id}
+          onSelect={handleSelect}
         />
       </section>
     </div>

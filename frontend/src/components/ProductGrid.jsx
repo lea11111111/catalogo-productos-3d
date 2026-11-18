@@ -1,4 +1,4 @@
-export function ProductGrid({ products, loading, error, onRetry, query = '' }) {
+export function ProductGrid({ products, loading, error, onRetry, query = '', selectedId, onSelect }) {
   if (loading) {
     return (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -40,13 +40,24 @@ export function ProductGrid({ products, loading, error, onRetry, query = '' }) {
   return (
     <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {products.map((p) => (
-        <li key={p.id} className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60">
-          <div className="flex h-32 items-center justify-center bg-slate-800/50">
+        <li key={p.id}>
+          <button
+            type="button"
+            onClick={() => onSelect?.(p.id)}
+            aria-pressed={p.id === selectedId}
+            className={`group block w-full overflow-hidden rounded-2xl border bg-slate-900/60 text-left transition hover:-translate-y-0.5 hover:border-indigo-500/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+              p.id === selectedId ? 'border-indigo-500 ring-1 ring-indigo-500/50' : 'border-slate-800'
+            }`}
+          >
+          <div className="relative flex h-32 items-center justify-center bg-slate-800/50">
             {p.image_url ? (
               <img src={p.image_url} alt={p.name} loading="lazy" className="h-full w-full object-cover" />
             ) : (
               <span className="text-4xl font-bold text-slate-700">{p.name.charAt(0).toUpperCase()}</span>
             )}
+            <span className="absolute right-2 top-2 rounded-full bg-slate-950/80 px-2 py-0.5 text-[11px] font-medium text-indigo-300 opacity-0 transition group-hover:opacity-100 group-aria-pressed:opacity-100">
+              {p.id === selectedId ? 'En vitrina 3D' : 'Ver en 3D'}
+            </span>
           </div>
           <div className="space-y-2 p-4">
             <h3 className="truncate font-medium">{p.name}</h3>
@@ -61,6 +72,7 @@ export function ProductGrid({ products, loading, error, onRetry, query = '' }) {
               </span>
             </div>
           </div>
+          </button>
         </li>
       ))}
     </ul>
