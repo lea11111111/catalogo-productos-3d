@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { Canvas, useFrame } from '@react-three/fiber'
+import { makeCutout } from '../lib/cutout'
 import { OrbitControls, RoundedBox, Float, ContactShadows, Environment, Lightformer, Sparkles } from '@react-three/drei'
 
 // Color estable a partir del nombre del producto
@@ -53,11 +54,11 @@ function useImageTexture(url) {
   return texture
 }
 
-function ProductBox({ color, texture, productKey }) {
+// Gira, flota y "aparece" con un pequeño rebote al cambiar de producto
+function Showcase({ productKey, height, children }) {
   const spin = useRef()
   const pop = useRef()
   const scale = useRef(0.6)
-  // Al cambiar de producto, la caja "aparece" con un pequeño rebote
   useEffect(() => {
     scale.current = 0.6
   }, [productKey])
@@ -66,35 +67,141 @@ function ProductBox({ color, texture, productKey }) {
     scale.current += (1 - scale.current) * Math.min(1, delta * 6)
     pop.current.scale.setScalar(scale.current)
   })
-  const [FACE_W, FACE_H] = faceSize(texture?.userData.aspect)
   return (
     <Float speed={2} rotationIntensity={0.25} floatIntensity={0.5} floatingRange={[0, 0.25]}>
-      <group ref={pop} position={[0, CARD_BOTTOM + FACE_H / 2 + 0.08, 0]}>
-        <group ref={spin}>
-          {/* Marco oscuro y delgado, con el borde del color del producto */}
-          <RoundedBox args={[FACE_W + 0.16, FACE_H + 0.16, CARD_D]} radius={0.06} smoothness={4}>
-            <meshStandardMaterial color="#0f172a" roughness={0.25} metalness={0.7} emissive={color} emissiveIntensity={0.12} />
-          </RoundedBox>
-          {texture ? (
-            <>
-              <mesh position={[0, 0, CARD_D / 2 + 0.005]}>
-                <planeGeometry args={[FACE_W, FACE_H]} />
-                <meshStandardMaterial map={texture} roughness={0.5} />
-              </mesh>
-              <mesh position={[0, 0, -CARD_D / 2 - 0.005]} rotation={[0, Math.PI, 0]}>
-                <planeGeometry args={[FACE_W, FACE_H]} />
-                <meshStandardMaterial map={texture} roughness={0.5} />
-              </mesh>
-            </>
-          ) : (
-            <mesh position={[0, 0, CARD_D / 2 + 0.005]}>
-              <planeGeometry args={[FACE_W, FACE_H]} />
-              <meshStandardMaterial color={color} roughness={0.5} />
-            </mesh>
-          )}
-        </group>
+      <group ref={pop} position={[0, CARD_BOTTOM + height / 2 + 0.08, 0]}>
+        <group ref={spin}>{children}</group>
       </group>
     </Float>
+  )
+}
+
+// Tarjeta con la foto (respaldo cuando el fondo de la foto no se puede recortar)
+function CardModel({ color, texture }) {
+  const [FACE_W, FACE_H] = faceSize(texture?.userData.aspect)
+  return (
+    <>
+      <RoundedBox args={[FACE_W + 0.16, FACE_H + 0.16, CARD_D]} radius={0.06} smoothness={4}>
+        <meshStandardMaterial color="#0f172a" roughness={0.25} metalness={0.7} emissive={color} emissiveIntensity={0.12} />
+      </RoundedBox>
+      {texture ? (
+        <>
+          <mesh position={[0, 0, CARD_D / 2 + 0.005]}>
+            <planeGeometry args={[FACE_W, FACE_H]} />
+            <meshStandardMaterial map={texture} roughness={0.5} />
+          </mesh>
+          <mesh position={[0, 0, -CARD_D / 2 - 0.005]} rotation={[0, Math.PI, 0]}>
+            <planeGeometry args={[FACE_W, FACE_H]} />
+            <meshStandardMaterial map={texture} roughness={0.5} />
+          </mesh>
+        </>
+      ) : (
+        <mesh position={[0, 0, CARD_D / 2 + 0.005]}>
+          <planeGeometry args={[FACE_W, FACE_H]} />
+          <meshStandardMaterial color={color} roughness={0.5} />
+        </mesh>
+      )}
+    </>
+  )
+}
+
+const CUT_DEPTH = 0.32
+
+// Figura recortada: la silueta del producto extruida con grosor y bordes redondeados
+function useCutoutGeometry(cutout) {
+  return useMemo(() => {
+    if (!cutout) return null
+    const { contours, bbox, imageAspect } = cutout
+    const bw = (bbox.maxX - bbox.minX) * imageAspect
+    const bh = bbox.maxY - bbox.minY
+    const s = Math.min(MAX_W / bw, MAX_H / bh)
+    const cx = (bbox.minX + bbox.maxX) / 2
+    const cy = (bbox.minY + bbox.maxY) / 2
+    const toWorld = ([u, v]) => new THREE.Vector2((u - cx) * imageAspect * s, -(v - cy) * s)
+    const shapes = contours.map((pts) => new THREE.Shape(pts.map(toWorld)))
+    const geo = new THREE.ExtrudeGeometry(shapes, {
+      depth: CUT_DEPTH,
+      bevelEnabled: true,
+      bevelThickness: 0.05,
+      bevelSize: 0.025,
+      bevelSegments: 4,
+      curveSegments: 1,
+    })
+    geo.translate(0, 0, -CUT_DEPTH / 2)
+    // Coordenadas de textura de las caras frontal/trasera = posición en la foto original
+    const pos = geo.attributes.position
+    const uv = geo.attributes.uv
+    for (const group of geo.groups) {
+      if (group.materialIndex !== 0) continue
+      for (let i = group.start; i < group.start + group.count; i++) {
+        const u = pos.getX(i) / (imageAspect * s) + cx
+        const v = cy - pos.getY(i) / s
+        uv.setXY(i, u, 1 - v)
+      }
+    }
+    uv.needsUpdate = true
+    geo.computeVertexNormals()
+    return { geo, height: bh * s }
+  }, [cutout])
+}
+
+function CutoutModel({ cutout }) {
+  const shape = useCutoutGeometry(cutout)
+  const texture = useMemo(() => {
+    const t = new THREE.CanvasTexture(cutout.canvas)
+    t.colorSpace = THREE.SRGBColorSpace
+    t.anisotropy = 4
+    return t
+  }, [cutout])
+  useEffect(() => () => {
+    texture.dispose()
+    shape?.geo.dispose()
+  }, [texture, shape])
+  return (
+    <mesh geometry={shape.geo}>
+      <meshStandardMaterial attach="material-0" map={texture} alphaTest={0.5} roughness={0.4} metalness={0.05} />
+      <meshStandardMaterial attach="material-1" color={cutout.edgeColor} roughness={0.3} metalness={0.4} side={THREE.DoubleSide} />
+    </mesh>
+  )
+}
+
+// Intenta recortar el fondo de la foto; status: 'idle' | 'loading' | 'ok' | 'fail'
+function useCutout(url) {
+  const [state, setState] = useState({ url: null, status: 'idle', cutout: null })
+  useEffect(() => {
+    if (!url) return
+    let cancelled = false
+    setState({ url, status: 'loading', cutout: null })
+    makeCutout(url)
+      .then((cutout) => !cancelled && setState({ url, status: cutout ? 'ok' : 'fail', cutout }))
+      .catch(() => !cancelled && setState({ url, status: 'fail', cutout: null }))
+    return () => {
+      cancelled = true
+    }
+  }, [url])
+  if (!url) return { status: 'idle', cutout: null }
+  return state.url === url ? state : { status: 'loading', cutout: null }
+}
+
+function ProductModel({ product, color }) {
+  const url = product?.image_url
+  const { status, cutout } = useCutout(url)
+  const shape = useCutoutGeometry(status === 'ok' ? cutout : null)
+  // Solo se usa la tarjeta si no hay foto o si el recorte falló
+  const cardTexture = useImageTexture(status === 'fail' ? url : null)
+  if (status === 'loading') return null
+  if (status === 'ok' && shape) {
+    return (
+      <Showcase productKey={product?.id} height={shape.height}>
+        <CutoutModel cutout={cutout} />
+      </Showcase>
+    )
+  }
+  const [, h] = faceSize(cardTexture?.userData.aspect)
+  return (
+    <Showcase productKey={product?.id} height={h}>
+      <CardModel color={color} texture={cardTexture} />
+    </Showcase>
   )
 }
 
@@ -116,7 +223,6 @@ function Pedestal({ color }) {
 
 export function Product3DViewer({ product, loading = false }) {
   const color = colorFromName(product?.name)
-  const texture = useImageTexture(product?.image_url)
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-b from-slate-900 to-slate-950">
       <div className="h-80 w-full cursor-grab active:cursor-grabbing">
@@ -130,7 +236,7 @@ export function Product3DViewer({ product, loading = false }) {
             <Lightformer form="rect" intensity={1} color="#818cf8" position={[-4, 1, -2]} scale={[2, 4, 1]} />
             <Lightformer form="rect" intensity={1} color="#f0abfc" position={[4, 1, -2]} scale={[2, 4, 1]} />
           </Environment>
-          <ProductBox color={color} texture={texture} productKey={product?.id} />
+          <ProductModel product={product} color={color} />
           <Pedestal color={color} />
           <Sparkles count={30} scale={[5, 3.5, 3]} size={2} speed={0.3} opacity={0.5} color={color} />
           <ContactShadows position={[0, -1.59, 0]} opacity={0.6} scale={4} blur={2} far={3} />

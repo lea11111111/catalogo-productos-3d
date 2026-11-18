@@ -15,7 +15,7 @@ Frontend en React (Vercel), API en FastAPI (Render) y base de datos PostgreSQL (
 
 | | |
 |---|---|
-| 🧊 **Vitrina 3D** | La foto del producto se muestra en una tarjeta 3D que gira sobre un pedestal con luz. Se rota con el cursor o el dedo. |
+| 🧊 **Vitrina 3D** | La app quita el fondo de la foto, traza la silueta del producto y la convierte en una figura 3D con grosor que gira sobre un pedestal con luz. Se rota con el cursor o el dedo. |
 | 👆 **Clic para ver en 3D** | Al tocar cualquier producto del catálogo, aparece en la vitrina. |
 | ✏️ **Editar y eliminar** | Botones en cada producto; el formulario avisa si la URL de imagen no es válida. |
 | ➕ **Registro de productos** | Formulario con validación (nombre, precio ≥ 0, stock ≥ 0, URL de imagen). Se agrega sin recargar. |
