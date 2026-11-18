@@ -10,10 +10,15 @@ function colorFromName(name = '') {
   return `hsl(${Math.abs(hash) % 360}, 70%, 55%)`
 }
 
-// Tamaño de la cara de la tarjeta (proporción 4:5, como una foto de producto)
-const FACE_W = 2.08
-const FACE_H = 2.6
+// La tarjeta toma la proporción de cada foto, sin recortarla, dentro de este tamaño máximo
+const MAX_W = 2.8
+const MAX_H = 2.6
 const CARD_D = 0.14
+const CARD_BOTTOM = -1.15 // borde inferior de la tarjeta, justo encima del pedestal
+
+function faceSize(aspect = 0.8) {
+  return aspect > MAX_W / MAX_H ? [MAX_W, MAX_W / aspect] : [MAX_H * aspect, MAX_H]
+}
 
 // Carga la imagen del producto como textura; si falla (CORS, URL rota) devuelve null
 function useImageTexture(url) {
@@ -30,16 +35,7 @@ function useImageTexture(url) {
       (tex) => {
         if (cancelled) return tex.dispose()
         tex.colorSpace = THREE.SRGBColorSpace
-        // Recorte tipo "cover" para la cara de la tarjeta
-        const imgAspect = tex.image.width / tex.image.height
-        const faceAspect = FACE_W / FACE_H
-        if (imgAspect > faceAspect) {
-          tex.repeat.set(faceAspect / imgAspect, 1)
-          tex.offset.set((1 - tex.repeat.x) / 2, 0)
-        } else {
-          tex.repeat.set(1, imgAspect / faceAspect)
-          tex.offset.set(0, (1 - tex.repeat.y) / 2)
-        }
+        tex.userData.aspect = tex.image.width / tex.image.height || 0.8
         loaded = tex
         setTexture(tex)
       },
@@ -68,9 +64,10 @@ function ProductBox({ color, texture, productKey }) {
     scale.current += (1 - scale.current) * Math.min(1, delta * 6)
     pop.current.scale.setScalar(scale.current)
   })
+  const [FACE_W, FACE_H] = faceSize(texture?.userData.aspect)
   return (
     <Float speed={2} rotationIntensity={0.25} floatIntensity={0.5} floatingRange={[0, 0.25]}>
-      <group ref={pop} position={[0, 0.25, 0]}>
+      <group ref={pop} position={[0, CARD_BOTTOM + FACE_H / 2 + 0.08, 0]}>
         <group ref={spin}>
           {/* Marco oscuro y delgado, con el borde del color del producto */}
           <RoundedBox args={[FACE_W + 0.16, FACE_H + 0.16, CARD_D]} radius={0.06} smoothness={4}>
