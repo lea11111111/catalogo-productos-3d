@@ -121,7 +121,7 @@ export function Product3DViewer({ product, loading = false }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-b from-slate-900 to-slate-950">
       <div className="h-80 w-full cursor-grab active:cursor-grabbing">
-        <Canvas camera={{ position: [0, 0.3, 5.7], fov: 42 }} dpr={[1, 2]}>
+        <Canvas camera={{ position: [0, 0.2, 6.3], fov: 42 }} dpr={[1, 2]}>
           <ambientLight intensity={0.35} />
           <spotLight position={[4, 6, 4]} angle={0.4} penumbra={0.8} intensity={60} />
           <pointLight position={[-3, -1, -2]} intensity={8} color="#818cf8" />
