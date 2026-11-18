@@ -30,18 +30,20 @@ function useImageTexture(url) {
     let loaded = null
     const loader = new THREE.TextureLoader()
     loader.setCrossOrigin('anonymous')
-    loader.load(
-      url,
-      (tex) => {
-        if (cancelled) return tex.dispose()
-        tex.colorSpace = THREE.SRGBColorSpace
-        tex.userData.aspect = tex.image.width / tex.image.height || 0.8
-        loaded = tex
-        setTexture(tex)
-      },
-      undefined,
-      () => !cancelled && setTexture(null),
-    )
+    const onLoad = (tex) => {
+      if (cancelled) return tex.dispose()
+      tex.colorSpace = THREE.SRGBColorSpace
+      tex.userData.aspect = tex.image.width / tex.image.height || 0.8
+      loaded = tex
+      setTexture(tex)
+    }
+    // Muchas tiendas no permiten usar sus fotos en WebGL (CORS).
+    // Si falla, reintentamos a través de un proxy de imágenes público que sí lo permite.
+    const viaProxy = `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=800&output=webp`
+    loader.load(url, onLoad, undefined, () => {
+      if (cancelled) return
+      loader.load(viaProxy, onLoad, undefined, () => !cancelled && setTexture(null))
+    })
     return () => {
       cancelled = true
       // Libera de la GPU la textura anterior al cambiar de imagen o desmontar
