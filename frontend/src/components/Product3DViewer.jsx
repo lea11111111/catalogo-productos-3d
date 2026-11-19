@@ -18,8 +18,8 @@ const MAX_H = 2.6
 const CARD_D = 0.14
 const CARD_BOTTOM = -1.0 // borde inferior del producto: flota un poco por encima del pedestal
 // Tamaño máximo de la figura recortada (algo menor que la tarjeta para que respire)
-const CUT_MAX_W = 2.5
-const CUT_MAX_H = 2.2
+const CUT_MAX_W = 3.0
+const CUT_MAX_H = 2.3
 
 function faceSize(aspect = 0.8) {
   return aspect > MAX_W / MAX_H ? [MAX_W, MAX_W / aspect] : [MAX_H * aspect, MAX_H]
@@ -73,7 +73,7 @@ function Showcase({ productKey, height, children }) {
     pop.current.scale.setScalar(scale.current)
   })
   return (
-    <Float speed={2} rotationIntensity={0.25} floatIntensity={0.5} floatingRange={[0, 0.25]}>
+    <Float speed={2} rotationIntensity={0.06} floatIntensity={0.4} floatingRange={[0, 0.2]}>
       <group ref={pop} position={[0, CARD_BOTTOM + height / 2 + 0.08, 0]}>
         <group ref={spin}>{children}</group>
       </group>

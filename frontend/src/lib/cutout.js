@@ -3,7 +3,7 @@
 // 2) traza el contorno de la silueta
 // 3) devuelve los polígonos para extruirlos en 3D y una textura sin fondo
 
-const MASK_SIZE = 200 // resolución del análisis (rápido y suficiente para el contorno)
+const MASK_SIZE = 360 // resolución del análisis: suficiente para bordes limpios
 const TEX_SIZE = 800 // resolución máxima de la textura
 
 function loadImage(src) {
@@ -47,30 +47,50 @@ function backgroundMask(data, w, h) {
     .filter((bk) => bk.n >= border.length * 0.06)
     .map((bk) => [bk.r / bk.n, bk.g / bk.n, bk.b / bk.n])
 
+  const nearestBg = (i) => Math.min(...bgColors.map(([r, g, b]) => dist(data, i, r, g, b)))
+
+  // ¿Fondo de estudio (uniforme) o con degradado? Se mide cuánto varía el color del borde.
+  const spreads = border.map((p) => nearestBg(p * 4)).sort((a, b) => a - b)
+  const spread = spreads[Math.floor(spreads.length * 0.9)] ?? 0
+  const uniform = spread < 14
+  const strict = Math.max(9, spread * 2 + 5)
+  const chroma = (i) => Math.max(data[i], data[i + 1], data[i + 2]) - Math.min(data[i], data[i + 1], data[i + 2])
+  const lum = (i) => (data[i] + data[i + 1] + data[i + 2]) / 3
+  const bgNeutral = bgColors.every(([r, g, b]) => Math.max(r, g, b) - Math.min(r, g, b) < 8)
+  const bgLum = bgColors.length ? Math.max(...bgColors.map(([r, g, b]) => (r + g + b) / 3)) : 0
+
   const mask = new Uint8Array(w * h).fill(1)
   const seedOf = new Int32Array(w * h) // pixel del borde desde el que se llegó (su color es la referencia)
   const queue = new Int32Array(w * h)
   let head = 0, tail = 0
   for (const p of border) {
-    if (mask[p] && bgColors.some(([r, g, b]) => dist(data, p * 4, r, g, b) < 60)) {
+    if (mask[p] && nearestBg(p * 4) < (uniform ? strict : 60)) {
       mask[p] = 0
       seedOf[p] = p
       queue[tail++] = p
     }
   }
-  // Se expande por el fondo mientras el color cambie suavemente (soporta degradados y sombras suaves)
+  const isBackground = (q, p) => {
+    const qi = q * 4
+    if (uniform) {
+      // Fondo de estudio: solo se borra lo casi idéntico al fondo, o su sombra gris suave.
+      // Así no se pierden partes del producto de color parecido (ej. una suela crema sobre gris).
+      if (nearestBg(qi) < strict) return true
+      return bgNeutral && chroma(qi) < 7 && lum(qi) > bgLum - 40 && lum(qi) < bgLum + 12
+    }
+    // Fondo con degradado: se avanza mientras el color cambie suavemente
+    const pi = p * 4, si = seedOf[p] * 4
+    const local = dist(data, qi, data[pi], data[pi + 1], data[pi + 2])
+    const global = dist(data, qi, data[si], data[si + 1], data[si + 2])
+    return local < 18 && global < 150
+  }
   while (head < tail) {
     const p = queue[head++]
     const x = p % w, y = (p / w) | 0
-    const pi = p * 4
-    const si = seedOf[p] * 4
     const neighbors = [x > 0 && p - 1, x < w - 1 && p + 1, y > 0 && p - w, y < h - 1 && p + w]
     for (const q of neighbors) {
       if (q === false || !mask[q]) continue
-      const qi = q * 4
-      const local = dist(data, qi, data[pi], data[pi + 1], data[pi + 2])
-      const global = dist(data, qi, data[si], data[si + 1], data[si + 2])
-      if (local < 18 && global < 150) {
+      if (isBackground(q, p)) {
         mask[q] = 0
         seedOf[q] = seedOf[p]
         queue[tail++] = q
