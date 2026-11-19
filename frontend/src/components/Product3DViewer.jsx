@@ -66,8 +66,9 @@ function Showcase({ productKey, height, children }) {
   useEffect(() => {
     scale.current = 0.6
   }, [productKey])
-  useFrame((_, delta) => {
-    spin.current.rotation.y += delta * 0.35
+  useFrame((state, delta) => {
+    // Balanceo suave en vez de giro completo: con una sola foto, el producto se ve mejor de frente
+    spin.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.55) * 0.6
     scale.current += (1 - scale.current) * Math.min(1, delta * 6)
     pop.current.scale.setScalar(scale.current)
   })
@@ -236,7 +237,14 @@ export function Product3DViewer({ product, loading = false }) {
           <ProductModel product={product} color={color} />
           <Pedestal color={color} />
           <Sparkles count={30} scale={[5, 3.5, 3]} size={2} speed={0.3} opacity={0.5} color={color} />
-          <OrbitControls enableZoom={false} enablePan={false} minPolarAngle={Math.PI / 4} maxPolarAngle={Math.PI / 1.9} />
+          <OrbitControls
+            enableZoom={false}
+            enablePan={false}
+            minPolarAngle={Math.PI / 3}
+            maxPolarAngle={Math.PI / 1.9}
+            minAzimuthAngle={-0.5}
+            maxAzimuthAngle={0.5}
+          />
         </Canvas>
       </div>
       <div className="border-t border-slate-800 px-5 py-4">
@@ -254,7 +262,7 @@ export function Product3DViewer({ product, loading = false }) {
         ) : (
           <h2 className="mt-1 text-lg font-semibold text-slate-500">{loading ? 'Cargando…' : 'Aún no hay productos'}</h2>
         )}
-        <p className="mt-2 text-xs text-slate-500">Arrastra para rotar · toca un producto del catálogo para verlo aquí</p>
+        <p className="mt-2 text-xs text-slate-500">Arrastra para inclinar · toca un producto del catálogo para verlo aquí</p>
       </div>
     </div>
   )
